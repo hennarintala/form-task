@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="kurssipalaute.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Gruppo" rel="stylesheet">
+
+</head>
+
+<body>
+    <form>
+        <div class="container">
+            <div class="jumbotron">
+                <img src="logo2.png" class="w3-round w3-image w3-opacity w3-hover-opacity-off" alt="HHlogo" width="800" height="560">
+                <div id="tulostus"></div><br><br>
+            </div>
+        </div>
+    </form>
+    <div class="container">
+        <div class="form-group" style="float: right"><br><br>
+            <button class="button" onclick="laheta()" type="submit">Lähetä</button>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <!--JSON-tiedon lukeminen script-elementissä:-->
+    <script>
+        //tunnuksiin tallennetaan JSON tiedostoista luettavien kysymysten id:t
+        var tunnukset = [];
+        //Items, johon kysymykset ja html-elementit viedään 
+        var items = [];
+
+        $.getJSON("https://pollsrest.herokuapp.com/polls", function(d) {
+
+            items.push("<h3>" + d[0].pollName + "</h3>");
+            items.push("<h4>" + d[0].pollDescription + "</h4>");
+        });
+
+
+        //Haetaan getJSON:n avulla JSON-muotoinen data
+        $.getJSON("https://pollsrest.herokuapp.com/polls/1/questions", function(data) {
+            $.each(data, function(key, d) {
+
+                items.push("<h3>" + d.id + ". " + d.questionText + "</h3>");
+
+                tunnukset.push(d.id);
+
+                if (d.questionType == "RADIO") {
+                    for (i = 0; i < d.options.length; i++) {
+                        items.push("<input type=" + d.questionType + " id= " + d.id + " name=" + d.id + " value=" + d.options[i].optionText + ">" + d.options[i].optionText + "<br>");
+                    }
+                }
+                if (d.questionType == "CHECKBOX") {
+                    for (i = 0; i < d.options.length; i++) {
+                        items.push("<input type=" + d.questionType + " id= " + d.id + " name=" + d.id + " value=" + d.options[i].optionText + ">" + d.options[i].optionText + "<br>");
+                    }
+                }
+                if (d.questionType == "TEXT") {
+                    items.push("<textarea id=" + d.id + " ></textarea>");
+                }
+            });
+
+
+            $("#tulostus").append(items.join(""));
+
+        });
+
+
+        function laheta() {
+            window.open("http://myy.haaga-helia.fi/~a1800629/digiprojekti/kiitos.html");
+            console.log("LAHETETAAN")
+            var vastaukset = [];
+
+            //for (i = 0; i < tunnukset.length; i++) {
+            for (i = 0; i < 11; i++) {
+                tyyppi = document.getElementById(tunnukset[i]).type;
+
+
+                if (tyyppi == "textarea") {
+                    vastaus = document.getElementById(tunnukset[i]).value;
+
+                    alert(vastaus);
+                    vastaukset.push({
+                        singleAnswer: [
+                            vastaus
+                        ],
+                        question: {
+                            id: tunnukset[i]
+                        }
+                    });
+                }
+
+
+                if (tyyppi == "radio") {
+
+
+                    var radios = document.getElementsByName(tunnukset[i]);
+                    for (var x = 0, length = radios.length; x < length; x++) {
+                        if (radios[x].checked) {
+                            vastaus = radios[x].value;
+                        }
+                    }
+
+                    vastaukset.push({
+                        singleAnswer: [
+                            vastaus
+                        ],
+                        question: {
+                            id: tunnukset[i]
+                        }
+                    });
+                }
+
+                if (tyyppi == "checkbox") {
+
+
+                    var boxi = document.getElementsByName(tunnukset[i]);
+                    for (var x = 0, length = boxi.length; x < length; x++) {
+                        if (boxi[x].checked) {
+                            vastaus = boxi[x].value;
+
+                            vastaukset.push({
+                                singleAnswer: [
+                                    vastaus
+                                ],
+                                question: {
+                                    id: tunnukset[i]
+                                }
+                            });
+
+                        } else {
+                            if (tyyppi == "select-one") {
+                                vastaus = document.getElementById(tunnukset[i]).value;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            //POST-toiminto tiedon lähettämiseen JSON-oliona:
+            var myJSON = JSON.stringify(vastaukset);
+
+            $.ajax({
+                url: 'https://pollsrest.herokuapp.com/answers',
+                type: 'POST',
+                dataType: 'application/json',
+                contentType: 'application/json',
+                data: myJSON,
+                success: function() {
+                    alert('Kiitos vastauksista!')
+                },
+                error: function(xhr, status, error) {
+                    console.log(xhr.responseText + " " + status + " " + error);
+                }
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
